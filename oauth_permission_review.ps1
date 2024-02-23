@@ -35,6 +35,9 @@ $permissionMappings = @{
 # Define a mapping of application names to skip
 $appNameSkipList = @("SecurityVerification", "VerificationGateway")
 
+# Initialize an array to store app registration names with dangerous permissions
+$appsWithDangerousPermissions = @()
+
 # Retrieve all app registrations
 $appRegistrations = Get-AzADApplication
 
@@ -51,6 +54,7 @@ foreach ($app in $appRegistrations) {
 
     # Check if RequiredResourceAccess property is available
     if ($app.RequiredResourceAccess) {
+        $dangerousPermissionFound = $false
         foreach ($resourceAccess in $app.RequiredResourceAccess) {
             # Output the regular permissions found
             Write-Host "`tApp Registration Name: $($app.DisplayName)"
@@ -61,6 +65,7 @@ foreach ($app in $appRegistrations) {
                 # Get human-readable permission name from the mapping
                 $permissionName = $permissionMappings[$permission.Id]
                 if ($permissionName) {
+                    $dangerousPermissionFound = $true
                     if (-not $firstPermission) {
                         Write-Host -NoNewline ", "
                     }
@@ -70,9 +75,25 @@ foreach ($app in $appRegistrations) {
             }
             Write-Host
         }
+        if (-not $dangerousPermissionFound) {
+            Write-Host "`tNo Dangerous Permissions have been identified" -ForegroundColor Green
+        } else {
+            $appsWithDangerousPermissions += $app.DisplayName
+        }
     } else {
-        Write-Host "`tNo required resource access found for this app registration."
+        Write-Host "`tNo API permissions have been configured for this app" -ForegroundColor Yellow
     }
 
     Write-Host "------------------------------------------------"
+}
+
+# Output the list of apps with dangerous permissions
+$appsCount = $appsWithDangerousPermissions.Count
+if ($appsCount -gt 0) {
+    Write-Host "`n$appsCount apps have been identified with potentially dangerous permissions:"
+    foreach ($app in $appsWithDangerousPermissions) {
+        Write-Host "`t- $app"
+    }
+} else {
+    Write-Host "`nNo apps have been identified with potentially dangerous permissions." -ForegroundColor Green
 }

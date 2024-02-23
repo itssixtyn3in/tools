@@ -35,9 +35,6 @@ $permissionMappings = @{
 # Define a mapping of application names to skip
 $appNameSkipList = @("SecurityVerification", "VerificationGateway")
 
-# Initialize an array to store app registration names with unknown permissions
-$unknownPermissionsApps = @()
-
 # Retrieve all app registrations
 $appRegistrations = Get-AzADApplication
 
@@ -52,9 +49,6 @@ foreach ($app in $appRegistrations) {
     # Output other properties of the app registration for debugging
     Write-Host "Permissions for App Registration: $($app.DisplayName)"
 
-    # Flag to indicate if any mapped permissions were found for this app
-    $mappedPermissionFound = $false
-
     # Check if RequiredResourceAccess property is available
     if ($app.RequiredResourceAccess) {
         foreach ($resourceAccess in $app.RequiredResourceAccess) {
@@ -64,14 +58,9 @@ foreach ($app in $appRegistrations) {
 
             $firstPermission = $true
             foreach ($permission in $resourceAccess.ResourceAccess) {
-                # Get human-readable permission name from the mapping, or default to "Unknown permission - Manual investigation"
+                # Get human-readable permission name from the mapping
                 $permissionName = $permissionMappings[$permission.Id]
-                if (-not $permissionName) {
-                    $permissionName = "Unknown permission - Manual investigation"
-                    $unknownPermissionsApps += $app.DisplayName
-                }
                 if ($permissionName) {
-                    $mappedPermissionFound = $true
                     if (-not $firstPermission) {
                         Write-Host -NoNewline ", "
                     }
@@ -86,10 +75,4 @@ foreach ($app in $appRegistrations) {
     }
 
     Write-Host "------------------------------------------------"
-}
-
-# Output the list of apps with unknown permissions
-Write-Host "`nApps with unknown permissions identified:"
-foreach ($app in $unknownPermissionsApps) {
-    Write-Host "`t- $app"
 }
